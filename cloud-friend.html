@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Friend</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+      background: #e8d8f0;
+      font-family: 'Georgia', serif;
+    }
+
+    .scene {
+      width: 100%;
+      max-width: 680px;
+      aspect-ratio: 680 / 480;
+      background: linear-gradient(175deg, #b8dff4 0%, #cce9f8 22%, #ddd0f0 55%, #f5d8e8 100%);
+      border-radius: 28px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 40px rgba(140,100,180,0.18), 0 2px 8px rgba(140,100,180,0.1);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .scene::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.25) 0%, transparent 60%),
+        radial-gradient(ellipse at 75% 80%, rgba(240,200,255,0.2) 0%, transparent 55%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    .bg-cloud {
+      position: absolute;
+      background: rgba(255,255,255,0.55);
+      border-radius: 60px;
+      pointer-events: none;
+    }
+
+    .particles-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 5;
+    }
+
+    .cloud-svg {
+      width: clamp(140px, 38vw, 260px);
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .cloud-wrap {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+      filter: drop-shadow(0 10px 28px rgba(160,100,200,0.22));
+      animation: cloud-float-in 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+    }
+
+    .cloud-wrap.hovered { transform: scale(1.12); animation: none; }
+    .cloud-wrap.fluffy  { transform: scale(1.22); animation: none; }
+    .cloud-wrap.linger  { transform: scale(1.05); transition: transform 0.7s cubic-bezier(0.34,1.56,0.64,1); animation: none; }
+    .cloud-wrap.idle    { animation: idle-bob 4s ease-in-out infinite; }
+
+    .blush { transition: opacity 0.45s ease; }
+
+    .fluffy-puff {
+      transition:
+        rx 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        ry 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      color: rgba(140,90,160,0.45);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    @keyframes cloud-float-in {
+      0%   { opacity: 0; transform: translateY(30px) scale(0.85); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes idle-bob {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-8px); }
+    }
+
+    @keyframes sparkle-pop {
+      0%   { opacity: 0; transform: scale(0.2) rotate(0deg); }
+      35%  { opacity: 1; transform: scale(1.15) rotate(25deg); }
+      100% { opacity: 0; transform: scale(0.4) rotate(55deg) translateY(-22px); }
+    }
+
+    .sparkle {
+      position: absolute;
+      pointer-events: none;
+      animation: sparkle-pop 1.3s ease-out forwards;
+      font-size: 17px;
+      line-height: 1;
+      z-index: 20;
+    }
+
+    @keyframes particle-fall {
+      0%   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+      70%  { opacity: 0.9; }
+      100% { opacity: 0; transform: translateY(160px) rotate(18deg) scale(0.55); }
+    }
+
+    .particle {
+      position: absolute;
+      pointer-events: none;
+      animation: particle-fall linear forwards;
+      font-size: 21px;
+      z-index: 20;
+    }
+
+    @media (max-width: 480px) {
+      body  { padding: 10px; }
+      .scene { border-radius: 18px; }
+      .hint  { font-size: 10px; bottom: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="scene" id="scene">
+  <div class="particles-layer" id="particles"></div>
+
+  <div class="bg-cloud" style="top:10%;left:6%;width:90px;height:34px;opacity:0.5;"></div>
+  <div class="bg-cloud" style="top:8%;left:9%;width:55px;height:24px;opacity:0.35;"></div>
+  <div class="bg-cloud" style="top:20%;right:8%;width:110px;height:38px;opacity:0.5;"></div>
+  <div class="bg-cloud" style="top:16%;right:11%;width:65px;height:26px;opacity:0.35;"></div>
+  <div class="bg-cloud" style="bottom:16%;left:10%;width:75px;height:28px;opacity:0.3;"></div>
+  <div class="bg-cloud" style="bottom:22%;right:14%;width:55px;height:22px;opacity:0.28;"></div>
+
+  <div class="cloud-wrap" id="cloudWrap">
+    <svg class="cloud-svg" viewBox="-100 -80 200 160" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- Cloud body -->
+      <ellipse cx="0"   cy="12"  rx="72" ry="40" fill="#f0e8fc"/>
+      <ellipse cx="-30" cy="2"   rx="42" ry="34" fill="#f0e8fc"/>
+      <ellipse cx="30"  cy="2"   rx="42" ry="34" fill="#f0e8fc"/>
+      <ellipse cx="0"   cy="-18" rx="36" ry="30" fill="#f0e8fc"/>
+
+      <!-- Fluffy puffs (expand on long hover) -->
+      <ellipse id="puffL" class="fluffy-puff" cx="-52" cy="-2"  rx="0" ry="0" fill="#e8d8f8"/>
+      <ellipse id="puffR" class="fluffy-puff" cx="52"  cy="-2"  rx="0" ry="0" fill="#e8d8f8"/>
+      <ellipse id="puffT" class="fluffy-puff" cx="0"   cy="-48" rx="0" ry="0" fill="#e8d8f8"/>
+
+      <!-- Blush -->
+      <ellipse id="blushL" class="blush" cx="-28" cy="18" rx="16" ry="10" fill="#f9a8c9" opacity="0"/>
+      <ellipse id="blushR" class="blush" cx="28"  cy="18" rx="16" ry="10" fill="#f9a8c9" opacity="0"/>
+
+      <!-- Googly eye left -->
+      <ellipse cx="-14" cy="4" rx="10" ry="11" fill="white" stroke="#d8c8ec" stroke-width="1"/>
+      <circle id="pupilL" cx="-14" cy="4" r="6"   fill="#6b3e8a"/>
+      <circle id="shineL" cx="-16" cy="2" r="2"   fill="white"/>
+
+      <!-- Googly eye right -->
+      <ellipse cx="14" cy="4" rx="10" ry="11" fill="white" stroke="#d8c8ec" stroke-width="1"/>
+      <circle id="pupilR" cx="14" cy="4"  r="6"   fill="#6b3e8a"/>
+      <circle id="shineR" cx="12"  cy="2" r="2"   fill="white"/>
+
+      <!-- Mouth -->
+      <path id="mouth" d="M -8 18 Q 0 24 8 18" stroke="#c07bc0" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <p class="hint">hover · hold · click</p>
+</div>
+
+<script>
+  const wrap      = document.getElementById('cloudWrap');
+  const scene     = document.getElementById('scene');
+  const particles = document.getElementById('particles');
+  const mouth     = document.getElementById('mouth');
+  const blushL    = document.getElementById('blushL');
+  const blushR    = document.getElementById('blushR');
+  const puffL     = document.getElementById('puffL');
+  const puffR     = document.getElementById('puffR');
+  const puffT     = document.getElementById('puffT');
+  const pupilL    = document.getElementById('pupilL');
+  const pupilR    = document.getElementById('pupilR');
+  const shineL    = document.getElementById('shineL');
+  const shineR    = document.getElementById('shineR');
+  const svg       = wrap.querySelector('.cloud-svg');
+
+  /* ─── Googly eye tracking ─── */
+  const EYE_L     = { x: -14, y: 4 };
+  const EYE_R     = { x:  14, y: 4 };
+  const MAX_TRAVEL = 3.5;
+
+  function movePupil(pupil, shine, center, angle, rawDist) {
+    const t  = Math.min(rawDist, MAX_TRAVEL);
+    const px = center.x + Math.cos(angle) * t;
+    const py = center.y + Math.sin(angle) * t;
+    pupil.setAttribute('cx', px);
+    pupil.setAttribute('cy', py);
+    shine.setAttribute('cx', px - 1.8);
+    shine.setAttribute('cy', py - 2);
+  }
+
+  document.addEventListener('mousemove', (e) => {
+    const r = svg.getBoundingClientRect();
+    if (!r.width) return;
+
+    // Convert screen coords → SVG viewBox coords
+    // viewBox = "-100 -80 200 160"  so origin offset is (-100, -80)
+    const scaleX = 200 / r.width;
+    const scaleY = 160 / r.height;
+    const vx = (e.clientX - r.left) * scaleX - 100;
+    const vy = (e.clientY - r.top)  * scaleY - 80;
+
+    [{ pupil: pupilL, shine: shineL, eye: EYE_L },
+     { pupil: pupilR, shine: shineR, eye: EYE_R }]
+    .forEach(({ pupil, shine, eye }) => {
+      const dx    = vx - eye.x;
+      const dy    = vy - eye.y;
+      const dist  = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx);
+      movePupil(pupil, shine, eye, angle, dist * 0.12);
+    });
+  });
+
+  /* ─── Audio ─── */
+  let audioCtx = null;
+
+  function playChime(freq, delay) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.3, audioCtx.currentTime + delay + 0.15);
+      gain.gain.setValueAtTime(0,    audioCtx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(0.07, audioCtx.currentTime + delay + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + 0.55);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime  + delay + 0.6);
+    } catch(_) {}
+  }
+
+  const playSoftAmbient = () => { playChime(480,0); playChime(600,0.1); playChime(720,0.22); };
+  const playClickSound  = () => { playChime(600,0); playChime(760,0.1); playChime(900,0.22); playChime(600,0.38); };
+
+  /* ─── Helpers ─── */
+  const setBlush = (v) => { blushL.setAttribute('opacity', v); blushR.setAttribute('opacity', v); };
+
+  const setPuffs = (on) => {
+    [['puffL',28,22],['puffR',28,22],['puffT',24,20]].forEach(([id,rx,ry]) => {
+      const el = document.getElementById(id);
+      el.setAttribute('rx', on ? rx : 0);
+      el.setAttribute('ry', on ? ry : 0);
+    });
+  };
+
+  const mouths = {
+    neutral:  'M -8 18 Q 0 24 8 18',
+    smile:    'M -10 17 Q 0 27 10 17',
+    bigSmile: 'M -12 16 Q 0 30 12 16',
+  };
+  const setMouth = (s) => mouth.setAttribute('d', mouths[s]);
+
+  /* ─── Sparkles ─── */
+  function spawnSparkles() {
+    const wr = wrap.getBoundingClientRect();
+    const sr = scene.getBoundingClientRect();
+    const cx = wr.left + wr.width  / 2 - sr.left;
+    const cy = wr.top  + wr.height / 2 - sr.top;
+
+    const positions = [
+      {x:-65,y:-60},{x:65,y:-60},{x:-85,y:-5},
+      {x:85,y:-5},{x:-35,y:-78},{x:35,y:-78},{x:0,y:-82}
+    ];
+    const glyphs = ['✦','✧','⋆','★','✩','✦','✧'];
+    const colors = ['#e8a0f0','#a0c8f8','#f0c0d8','#c0e0b0','#f8d0a0','#d0b8f8','#a8d8f0'];
+
+    positions.forEach((p, i) => {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = 'sparkle';
+        el.textContent = glyphs[i];
+        el.style.left  = (cx + p.x * 0.82) + 'px';
+        el.style.top   = (cy + p.y * 0.72) + 'px';
+        el.style.color = colors[i];
+        el.style.animationDelay = (i * 0.05) + 's';
+        particles.appendChild(el);
+        setTimeout(() => el.remove(), 1700);
+      }, i * 35);
+    });
+  }
+
+  /* ─── Click particles ─── */
+  function spawnParticles(ox, oy) {
+    const items = ['💕','🌸','⭐','💜','🌷','✨','💛','🩷','🌟','💫'];
+    for (let i = 0; i < 12; i++) {
+      const el  = document.createElement('div');
+      el.className = 'particle';
+      el.textContent = items[Math.floor(Math.random() * items.length)];
+      el.style.left = (ox + (Math.random() - 0.5) * 130) + 'px';
+      el.style.top  = (oy - 10) + 'px';
+      const dur = 1.1 + Math.random() * 0.9;
+      el.style.animationDuration = dur + 's';
+      el.style.animationDelay    = (i * 0.06) + 's';
+      particles.appendChild(el);
+      setTimeout(() => el.remove(), (dur + 0.7 + i * 0.06) * 1000);
+    }
+  }
+
+  /* ─── State machine ─── */
+  let hoverTimer = null;
+  let idleTimer  = null;
+  let isHovering = false;
+
+  function startIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => wrap.classList.add('idle'), 400);
+  }
+  function stopIdle() {
+    clearTimeout(idleTimer);
+    wrap.classList.remove('idle');
+  }
+
+  wrap.addEventListener('mouseenter', () => {
+    isHovering = true;
+    stopIdle();
+    wrap.classList.remove('linger','fluffy');
+    wrap.classList.add('hovered');
+    setBlush('0.55');
+    setMouth('smile');
+    playSoftAmbient();
+
+    hoverTimer = setTimeout(() => {
+      if (!isHovering) return;
+      wrap.classList.replace('hovered','fluffy');
+      setPuffs(true);
+      setMouth('bigSmile');
+      spawnSparkles();
+    }, 1300);
+  });
+
+  wrap.addEventListener('mouseleave', () => {
+    isHovering = false;
+    clearTimeout(hoverTimer);
+    wrap.classList.remove('hovered','fluffy');
+    wrap.classList.add('linger');
+    setPuffs(false);
+    setMouth('smile');
+
+    setTimeout(() => {
+      if (isHovering) return;
+      wrap.classList.remove('linger');
+      setBlush('0');
+      setMouth('neutral');
+      startIdle();
+    }, 2800);
+  });
+
+  wrap.addEventListener('click', (e) => {
+    const sr = scene.getBoundingClientRect();
+    spawnParticles(e.clientX - sr.left, e.clientY - sr.top);
+    playClickSound();
+  });
+
+  /* ─── Boot ─── */
+  startIdle();
+</script>
+</body>
+</html>
